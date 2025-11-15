@@ -5,7 +5,7 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/today", protect, getToday); // require auth
+router.get("/today", protect, getToday); 
 router.post("/submit", protect, submitDaily);
 
 export default router;

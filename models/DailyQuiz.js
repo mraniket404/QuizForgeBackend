@@ -9,7 +9,7 @@ const questionSchema = new mongoose.Schema({
 });
 
 const dailyQuizSchema = new mongoose.Schema({
-  date: { type: String, required: true, unique: true }, // e.g. '2025-11-14'
+  date: { type: String, required: true, unique: true },
   questions: [questionSchema]
 });
 
