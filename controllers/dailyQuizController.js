@@ -1,4 +1,3 @@
-// controllers/dailyQuizController.js
 import DailyQuiz from "../models/DailyQuiz.js";
 import Attempt from "../models/Attempt.js";
 import User from "../models/User.js";
@@ -20,8 +19,21 @@ export const getToday = async (req, res) => {
 
 export const submitDaily = async (req, res) => {
   try {
+    console.log("📝 Submitting daily quiz for user:", req.userId);
+    console.log("📊 Submission data:", req.body);
+
     const { quizId, answers } = req.body;
-    const user = req.user;
+    
+    if (!quizId || !answers) {
+      return res.status(400).json({ message: "Quiz ID and answers are required" });
+    }
+
+    // Find the user
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const quiz = await DailyQuiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
@@ -30,6 +42,8 @@ export const submitDaily = async (req, res) => {
     quiz.questions.forEach((q, i) => {
       if (answers && answers[i] !== null && answers[i] === q.answer) score += 1;
     });
+
+    console.log("🎯 Score calculated:", score, "/", quiz.questions.length);
 
     // create Attempt snapshot
     const attempt = await Attempt.create({
@@ -42,21 +56,38 @@ export const submitDaily = async (req, res) => {
       questions: quiz.questions
     });
 
+    console.log("💾 Attempt created:", attempt._id);
+
     // update user streak logic
     const today = new Date().toDateString();
     if (user.lastQuizDate === today) {
       // already done today, don't double count
+      console.log("ℹ️ User already played today");
     } else {
       const yesterday = new Date(Date.now() - 86400000).toDateString();
-      if (user.lastQuizDate === yesterday) user.streak = (user.streak || 0) + 1;
-      else user.streak = 1;
+      if (user.lastQuizDate === yesterday) {
+        user.streak = (user.streak || 0) + 1;
+        console.log("🔥 Streak increased to:", user.streak);
+      } else {
+        user.streak = 1;
+        console.log("🆕 New streak started:", user.streak);
+      }
       user.lastQuizDate = today;
       user.attempts.push(attempt._id);
       await user.save();
+      console.log("👤 User updated with new streak and attempt");
     }
 
-    res.json({ attemptId: attempt._id, score });
+    res.json({ 
+      success: true,
+      attemptId: attempt._id, 
+      score,
+      total: quiz.questions.length
+    });
+    
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("💥 Error in submitDaily:", err);
+    console.error("📋 Error details:", err.message);
+    res.status(500).json({ message: "Error submitting quiz: " + err.message });
   }
 };
